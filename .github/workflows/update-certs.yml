@@ -1,0 +1,71 @@
+name: Update DoD Certificate Bundle
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download DoD certificates
+        run: |
+          curl -L -o AllCerts.zip https://militarycac.com/maccerts/AllCerts.zip
+          unzip AllCerts.zip -d certs
+          cd certs
+
+      - name: Convert certificates to bundle
+        run: |
+          cd certs
+          echo -n > dod-cert-bundle.crt
+
+          for cert in *.cer; do
+            if grep -q "BEGIN CERTIFICATE" "$cert" 2>/dev/null; then
+              echo "# $cert (already PEM)"
+              cat "$cert" >> dod-cert-bundle.crt
+              echo "" >> dod-cert-bundle.crt
+            else
+              echo "# $cert (converting from DER)"
+              openssl x509 -inform DER -in "$cert" -outform PEM >> dod-cert-bundle.crt 2>/dev/null && echo "" >> dod-cert-bundle.crt || echo "Failed to convert $cert"
+            fi
+          done
+
+          mv dod-cert-bundle.crt ../
+
+      - name: Generate release tag and date
+        id: release_info
+        run: |
+          # Format: MM_DD_YYYY-HH_MM
+          TAG=$(date -u +'%m_%d_%Y-%H_%M')
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+          # Human readable format
+          READABLE_DATE=$(date -u +'%B %d, %Y')
+          READABLE_TIME=$(date -u +'%H:%M')
+          echo "readable_date=$READABLE_DATE" >> $GITHUB_OUTPUT
+          echo "readable_time=$READABLE_TIME" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.release_info.outputs.tag }}" \
+            --title "DoD Certificate Bundle ${{ steps.release_info.outputs.tag }}" \
+            --notes "# DoD Certificate Bundle
+
+          This release was made on **${{ steps.release_info.outputs.readable_date }}** at **${{ steps.release_info.outputs.readable_time }}** UTC.
+
+          This bundle contains all DoD CA certificates converted to PEM format.
+
+          ## Usage
+          Download \`dod-cert-bundle.crt\` and use it in your applications that need to trust DoD certificates." \
+            dod-cert-bundle.crt
