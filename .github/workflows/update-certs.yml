@@ -19,24 +19,68 @@ jobs:
 
       - name: Download DoD certificates
         run: |
-          curl -L -o AllCerts.zip https://militarycac.com/maccerts/AllCerts.zip
-          unzip AllCerts.zip -d certs
-          cd certs
+          mkdir -p certs
+          BASE_URL="https://militarycac.com"
+
+          # Download all 35 certificates
+          # Derility CA certificates
+          curl -L -o certs/DoD_Derility_CA-1.p7b "${BASE_URL}/chromecerts/DoD_Derility_CA-1.p7b"
+          curl -L -o certs/DoD_Derility_CA-3.p7b "${BASE_URL}/chromecerts/DoD_Derility_CA-3.p7b"
+          curl -L -o certs/DoD_Derility_CA-4.p7b "${BASE_URL}/chromecerts/DoD_Derility_CA-4.p7b"
+
+          # Email CA certificates
+          curl -L -o certs/DOD_EMAIL_CA-59.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-59.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-62.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-62.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-63.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-63.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-64.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-64.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-65.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-65.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-70.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-70.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-71.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-71.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-72.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-72.p7b"
+          curl -L -o certs/DOD_EMAIL_CA-73.p7b "${BASE_URL}/chromecerts/DOD_EMAIL_CA-73.p7b"
+
+          # ID CA certificates
+          curl -L -o certs/DOD_ID_CA-59.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-59.p7b"
+          curl -L -o certs/DOD_ID_CA-62.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-62.p7b"
+          curl -L -o certs/DOD_ID_CA-63.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-63.p7b"
+          curl -L -o certs/DOD_ID_CA-64.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-64.p7b"
+          curl -L -o certs/DOD_ID_CA-65.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-65.p7b"
+          curl -L -o certs/DOD_ID_CA-70.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-70.p7b"
+          curl -L -o certs/DOD_ID_CA-71.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-71.p7b"
+          curl -L -o certs/DOD_ID_CA-72.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-72.p7b"
+          curl -L -o certs/DOD_ID_CA-73.p7b "${BASE_URL}/chromecerts/DOD_ID_CA-73.p7b"
+
+          # Root certificates
+          curl -L -o certs/RootCert3.p7b "${BASE_URL}/maccerts/RootCert3.p7b"
+          curl -L -o certs/RootCert4.p7b "${BASE_URL}/maccerts/RootCert4.p7b"
+          curl -L -o certs/RootCert5.p7b "${BASE_URL}/maccerts/RootCert5.p7b"
+          curl -L -o certs/RootCert6.p7b "${BASE_URL}/maccerts/RootCert6.p7b"
+
+          # Software CA certificates
+          curl -L -o certs/DOD_SW_CA-60.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-60.p7b"
+          curl -L -o certs/DOD_SW_CA-61.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-61.p7b"
+          curl -L -o certs/DOD_SW_CA-66.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-66.p7b"
+          curl -L -o certs/DOD_SW_CA-67.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-67.p7b"
+          curl -L -o certs/DOD_SW_CA-68.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-68.p7b"
+          curl -L -o certs/DOD_SW_CA-69.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-69.p7b"
+          curl -L -o certs/DOD_SW_CA-74.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-74.p7b"
+          curl -L -o certs/DOD_SW_CA-75.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-75.p7b"
+          curl -L -o certs/DOD_SW_CA-76.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-76.p7b"
+          curl -L -o certs/DOD_SW_CA-77.p7b "${BASE_URL}/chromecerts/DOD_SW_CA-77.p7b"
 
       - name: Convert certificates to bundle
         run: |
           cd certs
           echo -n > dod-cert-bundle.crt
 
-          for cert in *.cer; do
-            if grep -q "BEGIN CERTIFICATE" "$cert" 2>/dev/null; then
-              echo "# $cert (already PEM)"
-              cat "$cert" >> dod-cert-bundle.crt
-              echo "" >> dod-cert-bundle.crt
-            else
-              echo "# $cert (converting from DER)"
-              openssl x509 -inform DER -in "$cert" -outform PEM >> dod-cert-bundle.crt 2>/dev/null && echo "" >> dod-cert-bundle.crt || echo "Failed to convert $cert"
-            fi
+          # Convert all P7B files to PEM format
+          for p7b in *.p7b; do
+            echo "Converting ${p7b} to PEM format"
+            # P7B files can contain multiple certificates, extract them all
+            openssl pkcs7 -inform PEM -outform PEM -in "${p7b}" -print_certs >> dod-cert-bundle.crt 2>/dev/null || \
+            openssl pkcs7 -inform DER -outform PEM -in "${p7b}" -print_certs >> dod-cert-bundle.crt 2>/dev/null || \
+            echo "Failed to convert ${p7b}"
+            echo "" >> dod-cert-bundle.crt
           done
 
           mv dod-cert-bundle.crt ../
