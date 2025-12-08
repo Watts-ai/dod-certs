@@ -1,13 +1,9 @@
 name: Update DoD Certificate Bundle
 
 on:
-  # Run daily at 00:00 UTC
   schedule:
+    # Run daily at 00:00 UTC
     - cron: '0 0 * * *'
-  # Run on pushes to 'main'
-  push:
-    branches:
-      - main
   # Allow manual trigger
   workflow_dispatch:
 
@@ -20,19 +16,30 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          lfs: true
 
-      - name: Create certificate bundle
+      - name: Download DoD certificates
         run: |
+          curl -L -o AllCerts.zip https://militarycac.com/maccerts/AllCerts.zip
+          unzip AllCerts.zip -d certs
+          cd certs
+
+      - name: Convert certificates to bundle
+        run: |
+          cd certs
           echo -n > dod-cert-bundle.crt
 
-          # Concatenate all .crt files from the certs directory
-          for crt in certs/*.crt; do
-            echo "Adding ${crt} to bundle"
-            cat "${crt}" >> dod-cert-bundle.crt
-            echo "" >> dod-cert-bundle.crt
+          for cert in *.cer; do
+            if grep -q "BEGIN CERTIFICATE" "$cert" 2>/dev/null; then
+              echo "# $cert (already PEM)"
+              cat "$cert" >> dod-cert-bundle.crt
+              echo "" >> dod-cert-bundle.crt
+            else
+              echo "# $cert (converting from DER)"
+              openssl x509 -inform DER -in "$cert" -outform PEM >> dod-cert-bundle.crt 2>/dev/null && echo "" >> dod-cert-bundle.crt || echo "Failed to convert $cert"
+            fi
           done
+
+          mv dod-cert-bundle.crt ../
 
       - name: Generate release tag and date
         id: release_info
