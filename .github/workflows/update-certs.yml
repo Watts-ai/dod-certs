@@ -1,9 +1,13 @@
 name: Update DoD Certificate Bundle
 
 on:
+  # Run daily at 00:00 UTC
   schedule:
-    # Run daily at 00:00 UTC
     - cron: '0 0 * * *'
+  # Run on pushes to 'main'
+  push:
+    branches:
+      - main
   # Allow manual trigger
   workflow_dispatch:
 
