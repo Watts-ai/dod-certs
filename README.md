@@ -12,32 +12,9 @@ Certificates are updated nightly. Docker images will require rebuilds if certifi
 
 ## Installation
 
-### Ubuntu/Debian
-
 ```bash
-curl -o /usr/local/share/ca-certificates/dod-certificates.crt https://go.watts.ai/dod-certs
+curl -fsSL https://go.watts.ai/dod-certs | install -D /dev/stdin /usr/local/share/ca-certificates/dod-certificates.crt
 update-ca-certificates
-```
-
-### Alpine
-
-```bash
-curl -o /usr/local/share/ca-certificates/dod-certificates.crt https://go.watts.ai/dod-certs
-update-ca-certificates
-```
-
-### Docker
-
-**Ubuntu/Debian:**
-```dockerfile
-RUN curl -o /usr/local/share/ca-certificates/dod-certificates.crt https://go.watts.ai/dod-certs && \
-    update-ca-certificates
-```
-
-**Alpine:**
-```dockerfile
-RUN curl -o /usr/local/share/ca-certificates/dod-certificates.crt https://go.watts.ai/dod-certs && \
-    update-ca-certificates
 ```
 
 ## License
